@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalentScan AI | People Analytics & Análise de Currículos</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        bgMain: '#0F1412',
+                        bgPanel: '#161D1A',
+                        bgCard: '#1E2723',
+                        borderSubtle: '#2D3B35',
+                        accentLime: '#C5D94D',
+                        accentGreen: '#2F834A',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- PDF.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Configura o Worker do PDF.js
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        body {
+            background-color: #0F1412;
+            color: #F3F6F4;
+        }
+
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0F1412;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2D3B35;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3F524A;
+        }
+
+        /* Animação suave de entrada */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* Otimização para Impressão / Exportação PDF */
+        @media print {
+            body {
+                background-color: #FFFFFF !important;
+                color: #111827 !important;
+                font-size: 12pt;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #input-panel {
+                display: none !important;
+            }
+            #results-panel {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .print-card {
+                background-color: #FFFFFF !important;
+                border: 1px solid #D1D5DB !important;
+                color: #111827 !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+                margin-bottom: 16px !important;
+            }
+            .print-text-dark {
+                color: #111827 !important;
+            }
+            .print-text-muted {
+                color: #4B5563 !important;
+            }
+            .print-badge {
+                border: 1px solid #9CA3AF !important;
+                background-color: #F3F4F6 !important;
+                color: #111827 !important;
+            }
+            #print-header {
+                display: flex !important;
+                border-bottom: 2px solid #2F834A;
+                padding-bottom: 12px;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-[#C5D94D] selection:text-[#0F1412]">
+
+    <!-- Notificação Toast Flutuante (Substitui alert()) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+    <!-- Cabeçalho Superior -->
+    <header class="bg-[#161D1A] border-b border-[#2D3B35] sticky top-0 z-30 no-print">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo e Título -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C5D94D] to-[#2F834A] flex items-center justify-center shadow-lg shadow-[#2F834A]/20">
+                    <i data-lucide="scan-search" class="w-6 h-6 text-[#0F1412] stroke-[2.2]"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-display font-extrabold text-xl tracking-tight text-white">TalentScan <span class="text-[#C5D94D]">AI</span></span>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#2F834A]/30 text-[#C5D94D] border border-[#2F834A]/50">
+                            People Analytics
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 hidden md:block">Triagem Semântica Local de Aderência & Perfil Comportamental DISC</p>
+                </div>
+            </div>
+
+            <!-- Ações do Cabeçalho -->
+            <div class="flex items-center gap-2.5 sm:gap-3">
+                <button onclick="loadBatchExampleData()" 
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-[#1E2723] hover:bg-[#26322D] text-[#C5D94D] border border-[#2D3B35] transition-all">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>Carregar Lote Exemplo (3 Candidatos)</span>
+                </button>
+
+                <div class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-[#0F1412] text-gray-300 border border-[#2D3B35]">
+                    <span class="w-2 h-2 rounded-full bg-[#C5D94D]"></span>
+                    <span class="hidden sm:inline">Motor Semântico Local</span>
+                    <i data-lucide="shield-check" class="w-4 h-4 text-[#C5D94D]"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- PAINEL ESQUERDO: ENTRADA DE DADOS E FILA EM LOTE (5 colunas no desktop) -->
+            <section id="input-panel" class="lg:col-span-5 bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 sm:p-6 shadow-xl no-print">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 class="font-display font-bold text-lg text-white flex items-center gap-2">
+                        <i data-lucide="briefcase" class="w-5 h-5 text-[#C5D94D]"></i>
+                        Parâmetros da Vaga & Lote
+                    </h2>
+                    <button onclick="clearAllFields()" class="text-xs text-gray-400 hover:text-gray-200 flex items-center gap-1 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        Limpar Tudo
+                    </button>
+                </div>
+
+                <!-- 1. Dados da Vaga -->
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label for="job-title" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                            Título do Cargo / Vaga *
+                        </label>
+                        <input type="text" id="job-title" placeholder="Ex: Analista de Dados Sênior / People Analytics"
+                            class="w-full bg-[#0F1412] border border-[#2D3B35] focus:border-[#C5D94D] rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none transition-colors">
+                    </div>
+
+                    <div>
+                        <label for="job-description" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                            Descrição da Vaga (Requisitos & Responsabilidades) *
+                        </label>
+                        <textarea id="job-description" rows="4" placeholder="Cole aqui os requisitos obrigatórios, desejáveis, ferramentas e principais entregas esperadas para a função..."
+                            class="w-full bg-[#0F1412] border border-[#2D3B35] focus:border-[#C5D94D] rounded-xl p-3.5 text-sm text-white placeholder-gray-600 focus:outline-none transition-colors resize-y leading-relaxed"></textarea>
+                    </div>
+                </div>
+
+                <hr class="border-[#2D3B35] my-5">
+
+                <!-- 2. Adicionar Currículos ao Lote -->
+                <div class="mb-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="folder-plus" class="w-4 h-4 text-[#C5D94D]"></i>
+                            Anexar Currículos ao Lote *
+                        </label>
+                        
+                        <!-- Seletor de Abas -->
+                        <div class="inline-flex bg-[#0F1412] p-1 rounded-xl border border-[#2D3B35]">
+                            <button type="button" id="tab-pdf-btn" onclick="switchResumeTab('pdf')"
+                                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#1E2723] text-[#C5D94D] shadow-sm">
+                                Arquivos (PDF/TXT)
+                            </button>
+                            <button type="button" id="tab-text-btn" onclick="switchResumeTab('text')"
+                                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-white">
+                                Colar Manual
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Aba Upload Múltiplo PDF/TXT -->
+                    <div id="tab-pdf-content" class="space-y-3">
+                        <div id="drop-zone" 
+                            class="border-2 border-dashed border-[#2D3B35] hover:border-[#C5D94D] bg-[#0F1412]/70 rounded-2xl p-5 text-center cursor-pointer transition-all group">
+                            <input type="file" id="pdf-file-input" accept="application/pdf,.txt,text/plain" multiple class="hidden">
+                            
+                            <div class="w-11 h-11 rounded-full bg-[#1E2723] group-hover:bg-[#2F834A]/30 text-[#C5D94D] flex items-center justify-center mx-auto mb-2.5 transition-colors">
+                                <i data-lucide="files" class="w-5 h-5"></i>
+                            </div>
+                            <p class="text-sm font-medium text-white mb-1">
+                                Selecione ou arraste vários currículos (.pdf ou .txt)
+                            </p>
+                            <p class="text-xs text-gray-400">
+                                Leitura simultânea local • Adicione quantos candidatos desejar para confronto
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Aba Colar Texto Manualmente -->
+                    <div id="tab-text-content" class="hidden space-y-3 bg-[#0F1412] border border-[#2D3B35] rounded-2xl p-3.5">
+                        <div>
+                            <label for="manual-candidate-name" class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                                Nome do Candidato (Opcional — detectado automaticamente se vazio)
+                            </label>
+                            <input type="text" id="manual-candidate-name" placeholder="Ex: Carlos Eduardo Mendes"
+                                class="w-full bg-[#161D1A] border border-[#2D3B35] focus:border-[#C5D94D] rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <textarea id="resume-text" rows="5" placeholder="Cole aqui o conteúdo completo do currículo..."
+                                class="w-full bg-[#161D1A] border border-[#2D3B35] focus:border-[#C5D94D] rounded-xl p-3 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors resize-y leading-relaxed"></textarea>
+                            <div class="flex justify-between items-center mt-1.5 text-[11px] text-gray-400">
+                                <span id="char-count">0 caracteres</span>
+                                <button type="button" onclick="addManualCandidateToBatch()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-[#2F834A] hover:bg-[#379655] text-white transition-colors">
+                                    <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                                    Adicionar à Fila
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Fila Visual de Candidatos Anexados -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                            <span>Candidatos na Fila</span>
+                            <span id="batch-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#1E2723] text-[#C5D94D] border border-[#2D3B35]">
+                                0
+                            </span>
+                        </span>
+                        <button id="clear-batch-btn" onclick="clearCandidateBatch()" class="hidden text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            Limpar Lote
+                        </button>
+                    </div>
+
+                    <div id="candidate-queue-empty" class="bg-[#0F1412] border border-[#2D3B35] rounded-xl p-4 text-center text-xs text-gray-500">
+                        Nenhum currículo anexado ainda. Suba arquivos PDF/TXT ou carregue o lote de exemplo acima.
+                    </div>
+
+                    <ul id="candidate-queue-list" class="hidden space-y-2 max-h-64 overflow-y-auto pr-1">
+                        <!-- Preenchido dinamicamente -->
+                    </ul>
+                </div>
+
+                <!-- Botão Principal de Análise em Lote -->
+                <button id="analyze-btn" onclick="runBatchAnalysis()"
+                    class="w-full py-3.5 px-6 rounded-xl font-display font-bold text-base bg-gradient-to-r from-[#C5D94D] to-[#98B838] hover:from-[#d0e35b] hover:to-[#a5c642] text-[#0F1412] shadow-lg shadow-[#C5D94D]/15 flex items-center justify-center gap-2.5 transition-all transform active:scale-[0.99]">
+                    <i data-lucide="git-compare" class="w-5 h-5 stroke-[2.2]"></i>
+                    <span>Analisar & Comparar Candidatos</span>
+                </button>
+            </section>
+
+            <!-- PAINEL DIREITO: RESULTADOS, RANKING E CONFRONTO (7 colunas no desktop) -->
+            <section id="results-panel" class="lg:col-span-7 space-y-6">
+                
+                <!-- Cabeçalho Exclusivo para Impressão PDF -->
+                <div id="print-header" class="hidden items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">TalentScan AI — Relatório Comparativo & Diagnóstico</h1>
+                        <p id="print-job-subtitle" class="text-sm text-gray-600 mt-0.5">Vaga: Analista</p>
+                    </div>
+                    <div class="text-right text-xs text-gray-500">
+                        <p id="print-date"></p>
+                        <p>People Analytics & Triagem Comparativa</p>
+                    </div>
+                </div>
+
+                <!-- Estado Inicial (Empty State) -->
+                <div id="empty-state" class="bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[560px]">
+                    <div class="w-20 h-20 rounded-2xl bg-[#1E2723] border border-[#2D3B35] flex items-center justify-center mb-5 text-[#C5D94D] shadow-inner">
+                        <i data-lucide="trophy" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">Confronto Inteligente de Talentos</h3>
+                    <p class="text-sm text-gray-400 max-w-md mb-6 leading-relaxed">
+                        Anexe um ou vários currículos ao lado para gerar automaticamente o Ranking de Aderência, a Matriz Comparativa lado a lado, o Gráfico Radar de confrontação e o diagnóstico DISC individual.
+                    </p>
+                    <button onclick="loadBatchExampleData()" 
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#1E2723] hover:bg-[#26322D] text-[#C5D94D] border border-[#2D3B35] transition-all">
+                        <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                        Testar Confronto com 3 Candidatos
+                    </button>
+                </div>
+
+                <!-- Estado de Carregamento -->
+                <div id="loading-state" class="hidden bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-12 text-center flex-col items-center justify-center min-h-[560px]">
+                    <div class="relative w-16 h-16 mb-6">
+                        <div class="absolute inset-0 rounded-full border-4 border-[#1E2723]"></div>
+                        <div class="absolute inset-0 rounded-full border-4 border-t-[#C5D94D] border-r-[#2F834A] animate-spin"></div>
+                        <div class="absolute inset-0 flex items-center justify-center text-[#C5D94D]">
+                            <i data-lucide="sparkles" class="w-6 h-6 animate-pulse"></i>
+                        </div>
+                    </div>
+                    <h3 class="font-display font-bold text-lg text-white mb-1.5" id="loading-title">Comparando Candidatos do Lote...</h3>
+                    <p class="text-sm text-gray-400 max-w-sm" id="loading-subtitle">Calculando pilares ponderados, perfil DISC e gerando matriz comparativa.</p>
+                </div>
+
+                <!-- Dashboard Completo (Oculto até gerar análise) -->
+                <div id="dashboard-content" class="hidden space-y-6 animate-fade-in">
+                    
+                    <!-- Barra de Ações do Relatório -->
+                    <div class="bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 no-print">
+                        <div class="flex items-center gap-2.5">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2F834A]/25 text-[#C5D94D] border border-[#2F834A]/40" id="analysis-engine-badge">
+                                Lote Analisado
+                            </span>
+                            <span class="text-sm font-medium text-gray-300 truncate max-w-[240px] sm:max-w-xs" id="batch-summary-header">
+                                3 Candidatos Comparados
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="copyBatchRankingToClipboard()" 
+                                class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1E2723] hover:bg-[#28342F] text-[#C5D94D] border border-[#2D3B35] transition-colors">
+                                <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i>
+                                <span>Copiar Ranking</span>
+                            </button>
+                            <button onclick="exportToPdf()" 
+                                class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#2F834A] hover:bg-[#379655] text-white transition-colors shadow-md">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                <span>Exportar PDF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO A: VISÃO GERAL DO LOTE & CONFRONTO COMPARATIVO -->
+                    <div id="batch-comparison-section" class="space-y-6">
+                        
+                        <!-- Card Pódio / Ranking Geral + Parecer Executivo -->
+                        <div class="bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 sm:p-6 print-card">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="p-2 rounded-lg bg-[#C5D94D]/15 text-[#C5D94D]">
+                                        <i data-lucide="trophy" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base sm:text-lg text-white print-text-dark">Ranking Geral & Melhor Fit</h3>
+                                        <p class="text-xs text-gray-400 print-text-muted">Clique em qualquer candidato para inspecionar o diagnóstico completo abaixo</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cards do Pódio / Ranking -->
+                            <div id="podium-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-5">
+                                <!-- Preenchido dinamicamente -->
+                            </div>
+
+                            <!-- Parecer Comparativo Executivo -->
+                            <div class="bg-[#1E2723] border border-[#2F834A]/50 rounded-xl p-4 print-card">
+                                <div class="flex items-center gap-2 text-xs font-bold text-[#C5D94D] uppercase tracking-wider mb-1.5 print-text-dark">
+                                    <i data-lucide="scale" class="w-4 h-4"></i>
+                                    <span>Parecer Comparativo Executivo</span>
+                                </div>
+                                <p id="executive-comparison-verdict" class="text-xs sm:text-sm text-gray-200 print-text-dark leading-relaxed">
+                                    Análise comparativa entre os candidatos avaliados.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico Radar Comparativo + Matriz Lado a Lado -->
+                        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                            
+                            <!-- Gráfico Radar de Confronto -->
+                            <div class="xl:col-span-5 bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 flex flex-col justify-between print-card">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2 mb-1">
+                                        <h3 class="font-display font-bold text-base text-white print-text-dark flex items-center gap-2">
+                                            <i data-lucide="radar" class="w-4 h-4 text-[#C5D94D]"></i>
+                                            Radar de Confronto
+                                        </h3>
+                                        <!-- Alternador Pilares vs DISC -->
+                                        <div class="inline-flex bg-[#0F1412] p-0.5 rounded-lg border border-[#2D3B35] no-print">
+                                            <button type="button" id="radar-mode-pillars" onclick="switchRadarMode('pillars')"
+                                                class="px-2 py-1 rounded-md text-[11px] font-semibold bg-[#1E2723] text-[#C5D94D]">
+                                                Pilares
+                                            </button>
+                                            <button type="button" id="radar-mode-disc" onclick="switchRadarMode('disc')"
+                                                class="px-2 py-1 rounded-md text-[11px] font-semibold text-gray-400 hover:text-white">
+                                                DISC
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p id="radar-subtitle" class="text-xs text-gray-400 print-text-muted">
+                                        Comparativo dos Top candidatos nos 3 pilares de aderência
+                                    </p>
+                                </div>
+
+                                <div class="relative h-64 my-3">
+                                    <canvas id="comparisonRadarChart"></canvas>
+                                </div>
+
+                                <p class="text-[11px] text-gray-500 text-center">
+                                    Exibindo até os 4 primeiros colocados do ranking para clareza visual.
+                                </p>
+                            </div>
+
+                            <!-- Tabela Matriz Comparativa Lado a Lado -->
+                            <div class="xl:col-span-7 bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 flex flex-col justify-between print-card">
+                                <div class="mb-3">
+                                    <h3 class="font-display font-bold text-base text-white print-text-dark flex items-center gap-2">
+                                        <i data-lucide="table-2" class="w-4 h-4 text-[#C5D94D]"></i>
+                                        Matriz Comparativa Lado a Lado
+                                    </h3>
+                                    <p class="text-xs text-gray-400 print-text-muted">Cruzamento objetivo de scores, perfil DISC, diferenciais e gaps</p>
+                                </div>
+
+                                <div class="overflow-x-auto rounded-xl border border-[#2D3B35]">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr class="bg-[#0F1412] text-gray-400 border-b border-[#2D3B35] uppercase text-[10px] tracking-wider">
+                                                <th class="py-2.5 px-3 font-semibold">#</th>
+                                                <th class="py-2.5 px-3 font-semibold">Candidato</th>
+                                                <th class="py-2.5 px-2.5 font-semibold text-center">Match</th>
+                                                <th class="py-2.5 px-2 font-semibold text-center" title="Formação (30%)">Form.</th>
+                                                <th class="py-2.5 px-2 font-semibold text-center" title="Técnico (50%)">Técn.</th>
+                                                <th class="py-2.5 px-2 font-semibold text-center" title="Contexto (20%)">Cont.</th>
+                                                <th class="py-2.5 px-2.5 font-semibold text-center">DISC</th>
+                                                <th class="py-2.5 px-3 font-semibold">Principal Gap</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="comparison-matrix-body" class="divide-y divide-[#2D3B35]">
+                                            <!-- Preenchido dinamicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+                                    <span>Clique em uma linha para detalhar o candidato abaixo.</span>
+                                    <span class="text-[#C5D94D] font-medium">Ordenado por Aderência Total</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divisor Visual entre Confronto Geral e Inspeção Individual -->
+                    <div class="flex items-center justify-between bg-[#1E2723] border border-[#2D3B35] rounded-2xl px-4 py-3 print-card">
+                        <div class="flex items-center gap-2.5">
+                            <span id="inspected-rank-pill" class="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-[#C5D94D] text-[#0F1412]">
+                                1º Lugar
+                            </span>
+                            <div>
+                                <span class="text-xs text-gray-400 block print-text-muted">Inspeção Individual Detalhada</span>
+                                <h4 id="result-candidate-name" class="font-display font-bold text-sm sm:text-base text-white print-text-dark">
+                                    Candidato Avaliado
+                                </h4>
+                            </div>
+                        </div>
+                        <button onclick="copySummaryToClipboard()" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#161D1A] hover:bg-[#26322D] text-gray-200 border border-[#2D3B35] transition-colors no-print">
+                            <i data-lucide="copy" class="w-3.5 h-3.5 text-[#C5D94D]"></i>
+                            <span>Copiar Ficha Individual</span>
+                        </button>
+                    </div>
+
+                    <!-- SEÇÃO B: PAINEL INDIVIDUAL DETALHADO DO CANDIDATO SELECIONADO -->
+                    <!-- Linha 1: Match Score + Análise Comportamental DISC -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        
+                        <!-- Card 1: Indicador de Aderência (Match Score) -->
+                        <div class="md:col-span-5 bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 flex flex-col justify-between print-card">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="font-display font-bold text-base text-white print-text-dark flex items-center gap-2">
+                                        <i data-lucide="target" class="w-4 h-4 text-[#C5D94D]"></i>
+                                        Aderência à Vaga
+                                    </h3>
+                                    <span id="match-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#2F834A]/30 text-[#C5D94D] print-badge">
+                                        Alta Aderência
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-400 print-text-muted">Cálculo ponderado por pilares</p>
+                            </div>
+
+                            <!-- Gráfico de Rosca (Doughnut) -->
+                            <div class="relative w-40 h-40 mx-auto my-3 flex items-center justify-center">
+                                <canvas id="matchChart"></canvas>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span id="match-score-value" class="font-display font-extrabold text-3xl text-white print-text-dark">0%</span>
+                                    <span class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Match</span>
+                                </div>
+                            </div>
+
+                            <!-- Breakdown Ponderado Transparente (30% / 50% / 20%) -->
+                            <div id="score-breakdown" class="grid grid-cols-3 gap-2 mb-3 text-center">
+                                <div class="bg-[#0F1412] border border-[#2D3B35] rounded-xl p-2 print-card">
+                                    <span class="block text-[10px] text-gray-400 uppercase font-semibold">Formação (30%)</span>
+                                    <span id="pillar-edu-score" class="font-display font-bold text-sm text-[#C5D94D] print-text-dark">0%</span>
+                                </div>
+                                <div class="bg-[#0F1412] border border-[#2D3B35] rounded-xl p-2 print-card">
+                                    <span class="block text-[10px] text-gray-400 uppercase font-semibold">Técnico (50%)</span>
+                                    <span id="pillar-tech-score" class="font-display font-bold text-sm text-[#C5D94D] print-text-dark">0%</span>
+                                </div>
+                                <div class="bg-[#0F1412] border border-[#2D3B35] rounded-xl p-2 print-card">
+                                    <span class="block text-[10px] text-gray-400 uppercase font-semibold">Contexto (20%)</span>
+                                    <span id="pillar-ctx-score" class="font-display font-bold text-sm text-[#C5D94D] print-text-dark">0%</span>
+                                </div>
+                            </div>
+
+                            <!-- Justificativa Executiva -->
+                            <div class="bg-[#1E2723] border border-[#2D3B35] rounded-xl p-3.5 print-card">
+                                <p id="match-summary" class="text-xs text-gray-300 print-text-dark leading-relaxed">
+                                    Resumo executivo da aderência do candidato aos requisitos do cargo.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Perfil Comportamental DISC (Baseado na Escrita) -->
+                        <div class="md:col-span-7 bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 flex flex-col justify-between print-card">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <h3 class="font-display font-bold text-base text-white print-text-dark flex items-center gap-2">
+                                        <i data-lucide="brain-circuit" class="w-4 h-4 text-[#C5D94D]"></i>
+                                        Perfil DISC (Análise Textual)
+                                    </h3>
+                                    <span id="disc-dominant-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#C5D94D]/20 text-[#C5D94D] border border-[#C5D94D]/30 print-badge">
+                                        Predominante: C / D
+                                    </span>
+                                </div>
+                                <p id="disc-profile-title" class="text-xs text-gray-400 print-text-muted">
+                                    Mapeamento por verbos de ação e estrutura semântica
+                                </p>
+                            </div>
+
+                            <!-- Gráfico de Barras Horizontais DISC -->
+                            <div class="h-44 my-3">
+                                <canvas id="discChart"></canvas>
+                            </div>
+
+                            <!-- Indícios Linguísticos & Aviso Metodológico -->
+                            <div class="space-y-2.5">
+                                <div class="bg-[#1E2723] border border-[#2D3B35] rounded-xl p-3 print-card">
+                                    <p class="text-[11px] font-semibold text-[#C5D94D] uppercase tracking-wider mb-1">Indícios identificados na escrita:</p>
+                                    <p id="disc-evidence" class="text-xs text-gray-300 print-text-dark leading-relaxed">
+                                        Verbos orientados a resultados, precisão analítica e estruturação de processos.
+                                    </p>
+                                </div>
+                                <p class="text-[11px] text-gray-500 flex items-start gap-1.5 leading-snug">
+                                    <i data-lucide="info" class="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5"></i>
+                                    <span>Nota metodológica: Indicativo comportamental inferido pela semântica do currículo para apoiar a entrevista; não substitui inventário psicométrico oficial.</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Linha 2: Pontos Fortes vs Pontos Fracos / Gaps -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Card Pontos Fortes & Formação Identificada -->
+                        <div class="bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 print-card">
+                            <div class="flex items-center gap-2.5 mb-4">
+                                <div class="p-2 rounded-lg bg-[#2F834A]/25 text-[#C5D94D]">
+                                    <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-white print-text-dark">Pontos Fortes & Formação</h3>
+                                    <p class="text-xs text-gray-400 print-text-muted">Formação acadêmica e competências validadas</p>
+                                </div>
+                            </div>
+
+                            <!-- Destaque Explícito da Formação Acadêmica -->
+                            <div id="education-highlight-box" class="mb-3 bg-[#0F1412] border border-[#2F834A]/60 rounded-xl p-3.5 print-card">
+                                <div class="flex items-center gap-2 text-xs font-bold text-[#C5D94D] uppercase tracking-wider mb-1 print-text-dark">
+                                    <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+                                    <span>Formação & Área Identificada</span>
+                                </div>
+                                <p id="education-highlight-text" class="text-xs sm:text-sm text-gray-200 print-text-dark leading-relaxed">
+                                    Formação compatível identificada no currículo.
+                                </p>
+                            </div>
+
+                            <ul id="strengths-list" class="space-y-2.5">
+                                <!-- Preenchido dinamicamente -->
+                            </ul>
+                        </div>
+
+                        <!-- Card Pontos Fracos / Gaps -->
+                        <div class="bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 print-card">
+                            <div class="flex items-center gap-2.5 mb-4">
+                                <div class="p-2 rounded-lg bg-amber-500/15 text-amber-400">
+                                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-white print-text-dark">Pontos de Atenção & Gaps</h3>
+                                    <p class="text-xs text-gray-400 print-text-muted">Requisitos ausentes ou pouco detalhados</p>
+                                </div>
+                            </div>
+                            <ul id="weaknesses-list" class="space-y-2.5">
+                                <!-- Preenchido dinamicamente -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Linha 3: Roteiro de Perguntas para Entrevista -->
+                    <div class="bg-[#161D1A] border border-[#2D3B35] rounded-2xl p-5 sm:p-6 print-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2.5">
+                                <div class="p-2 rounded-lg bg-[#C5D94D]/15 text-[#C5D94D]">
+                                    <i data-lucide="message-square-quote" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-white print-text-dark">Roteiro Sugerido para Entrevista</h3>
+                                    <p class="text-xs text-gray-400 print-text-muted">Perguntas direcionadas para validar gaps técnicos e perfil DISC</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="questions-list" class="grid grid-cols-1 gap-3">
+                            <!-- Preenchido dinamicamente -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Scripts da Aplicação -->
+    <script>
+        // ==========================================
+        // 1. ESTADO GLOBAL E INICIALIZAÇÃO
+        // ==========================================
+        let matchChartInstance = null;
+        let discChartInstance = null;
+        let comparisonRadarInstance = null;
+
+        let candidateQueue = []; // { id, name, source, text, status }
+        let batchResults = [];   // Array ordenado de resultados analisados
+        let selectedCandidateId = null;
+        let currentRadarMode = 'pillars'; // 'pillars' | 'disc'
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupDragAndDrop();
+            setupCharCounter();
+            renderCandidateQueue();
+        });
+
+        // ==========================================
+        // 2. SISTEMA DE NOTIFICAÇÕES (TOAST)
+        // ==========================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-[#1E2723] border-[#2F834A] text-white',
+                error: 'bg-[#2A1818] border-red-500/60 text-red-100',
+                info: 'bg-[#1E2723] border-[#C5D94D]/60 text-white'
+            };
+
+            const icons = {
+                success: 'check-circle',
+                error: 'alert-circle',
+                info: 'sparkles'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl text-sm font-medium animate-fade-in ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || icons.info}" class="w-4 h-4 shrink-0 ${type === 'error' ? 'text-red-400' : 'text-[#C5D94D]'}"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        // ==========================================
+        // 3. UPLOAD MÚLTIPLO, EXTRAÇÃO E GESTÃO DE FILA
+        // ==========================================
+        function switchResumeTab(tab) {
+            const pdfBtn = document.getElementById('tab-pdf-btn');
+            const textBtn = document.getElementById('tab-text-btn');
+            const pdfContent = document.getElementById('tab-pdf-content');
+            const textContent = document.getElementById('tab-text-content');
+
+            if (tab === 'pdf') {
+                pdfBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#1E2723] text-[#C5D94D] shadow-sm';
+                textBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-white';
+                pdfContent.classList.remove('hidden');
+                textContent.classList.add('hidden');
+            } else {
+                textBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#1E2723] text-[#C5D94D] shadow-sm';
+                pdfBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-white';
+                textContent.classList.remove('hidden');
+                pdfContent.classList.add('hidden');
+            }
+        }
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('pdf-file-input');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-[#C5D94D]', 'bg-[#1E2723]/50');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-[#C5D94D]', 'bg-[#1E2723]/50');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-[#C5D94D]', 'bg-[#1E2723]/50');
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleMultipleFiles(e.dataTransfer.files);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    handleMultipleFiles(e.target.files);
+                    fileInput.value = '';
+                }
+            });
+        }
+
+        function inferCandidateName(text, fallbackFileName = '') {
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length >= 3);
+            for (let i = 0; i < Math.min(4, lines.length); i++) {
+                const line = lines[i];
+                // Ignora cabeçalhos genéricos de currículo
+                if (!/^(curriculo|curriculum|cv|resumo|dados pessoais|contato|telefone|email)/i.test(normalizeText(line)) &&
+                    line.length <= 48 &&
+                    !/[@\d]{3,}/.test(line)) {
+                    if (line === line.toUpperCase()) {
+                        return line.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+                    }
+                    return line;
+                }
+            }
+            if (fallbackFileName) {
+                return fallbackFileName
+                    .replace(/\.(pdf|txt)$/i, '')
+                    .replace(/[-_]+/g, ' ')
+                    .replace(/\b(cv|curriculo|curriculum)\b/gi, '')
+                    .trim() || 'Candidato Anexado';
+            }
+            return `Candidato #${candidateQueue.length + 1}`;
+        }
+
+        async function handleMultipleFiles(fileList) {
+            const files = Array.from(fileList);
+            let addedCount = 0;
+
+            showToast(`Lendo ${files.length} arquivo(s)...`, 'info');
+
+            for (const file of files) {
+                const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                const isTxt = file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt');
+
+                if (!isPdf && !isTxt) {
+                    showToast(`Formato não suportado ignorado: ${file.name}`, 'error');
+                    continue;
+                }
+
+                try {
+                    let extractedText = '';
+                    if (isPdf) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                            const page = await pdf.getPage(pageNum);
+                            const textContent = await page.getTextContent();
+                            extractedText += textContent.items.map(item => item.str).join(' ') + '\n';
+                        }
+                    } else {
+                        extractedText = await file.text();
+                    }
+
+                    const cleanText = extractedText.trim();
+                    if (cleanText.length < 30) {
+                        showToast(`Pouco texto legível em "${file.name}" (pode ser imagem).`, 'error');
+                        continue;
+                    }
+
+                    const candidateName = inferCandidateName(cleanText, file.name);
+                    candidateQueue.push({
+                        id: 'cand_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                        name: candidateName,
+                        source: file.name,
+                        text: cleanText,
+                        status: 'Pronto'
+                    });
+                    addedCount++;
+                } catch (err) {
+                    console.error(`Erro ao processar ${file.name}:`, err);
+                    showToast(`Falha ao ler ${file.name}.`, 'error');
+                }
+            }
+
+            renderCandidateQueue();
+            if (addedCount > 0) {
+                showToast(`${addedCount} currículo(s) adicionado(s) à fila!`, 'success');
+            }
+        }
+
+        function addManualCandidateToBatch() {
+            const rawText = document.getElementById('resume-text').value.trim();
+            const customName = document.getElementById('manual-candidate-name').value.trim();
+
+            if (rawText.length < 40) {
+                showToast('Cole um texto de currículo com pelo menos 40 caracteres.', 'error');
+                return;
+            }
+
+            const candidateName = customName || inferCandidateName(rawText);
+            candidateQueue.push({
+                id: 'cand_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                name: candidateName,
+                source: 'Texto Colado',
+                text: rawText,
+                status: 'Pronto'
+            });
+
+            document.getElementById('resume-text').value = '';
+            document.getElementById('manual-candidate-name').value = '';
+            updateCharCounter();
+            renderCandidateQueue();
+            showToast(`"${candidateName}" adicionado à fila!`, 'success');
+        }
+
+        function updateQueuedCandidateName(id, newName) {
+            const item = candidateQueue.find(c => c.id === id);
+            if (item && newName.trim()) {
+                item.name = newName.trim();
+            }
+        }
+
+        function removeQueuedCandidate(id) {
+            candidateQueue = candidateQueue.filter(c => c.id !== id);
+            renderCandidateQueue();
+        }
+
+        function clearCandidateBatch() {
+            candidateQueue = [];
+            batchResults = [];
+            selectedCandidateId = null;
+            renderCandidateQueue();
+            document.getElementById('dashboard-content').classList.add('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+            showToast('Fila de candidatos limpa.', 'info');
+        }
+
+        function renderCandidateQueue() {
+            const badge = document.getElementById('batch-count-badge');
+            const emptyBox = document.getElementById('candidate-queue-empty');
+            const listEl = document.getElementById('candidate-queue-list');
+            const clearBtn = document.getElementById('clear-batch-btn');
+
+            badge.textContent = candidateQueue.length;
+
+            if (candidateQueue.length === 0) {
+                emptyBox.classList.remove('hidden');
+                listEl.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+                listEl.innerHTML = '';
+                return;
+            }
+
+            emptyBox.classList.add('hidden');
+            listEl.classList.remove('hidden');
+            clearBtn.classList.remove('hidden');
+
+            listEl.innerHTML = candidateQueue.map((cand, index) => {
+                const isAnalyzed = cand.status === 'Analisado';
+                return `
+                    <li class="bg-[#0F1412] border border-[#2D3B35] hover:border-[#3F524A] rounded-xl p-2.5 flex items-center justify-between gap-2 transition-colors">
+                        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span class="w-6 h-6 rounded-lg bg-[#1E2723] text-[#C5D94D] text-xs font-bold flex items-center justify-center shrink-0">
+                                ${index + 1}
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <input type="text" value="${escapeHtml(cand.name)}"
+                                    onchange="updateQueuedCandidateName('${cand.id}', this.value)"
+                                    title="Clique para editar o nome do candidato"
+                                    class="w-full bg-transparent text-xs font-semibold text-white focus:bg-[#161D1A] focus:px-1.5 focus:py-0.5 rounded outline-none border border-transparent focus:border-[#C5D94D] truncate">
+                                <p class="text-[11px] text-gray-500 truncate">${escapeHtml(cand.source)} • ${cand.text.length} caracteres</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold ${isAnalyzed ? 'bg-[#2F834A]/30 text-[#C5D94D] border border-[#2F834A]/50' : 'bg-[#1E2723] text-gray-300 border border-[#2D3B35]'}">
+                                ${cand.status}
+                            </span>
+                            <button type="button" onclick="removeQueuedCandidate('${cand.id}')" title="Remover candidato"
+                                class="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-[#1E2723] transition-colors">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function setupCharCounter() {
+            const textarea = document.getElementById('resume-text');
+            textarea.addEventListener('input', updateCharCounter);
+        }
+
+        function updateCharCounter() {
+            const len = document.getElementById('resume-text').value.length;
+            document.getElementById('char-count').textContent = `${len} caracteres`;
+        }
+
+        // ==========================================
+        // 4. DADOS DE EXEMPLO EM LOTE (3 CANDIDATOS)
+        // ==========================================
+        function loadBatchExampleData() {
+            document.getElementById('job-title').value = 'Analista de Dados / People Analytics Pleno';
+            document.getElementById('job-description').value = `Buscamos um(a) Analista de Dados para atuar na área de People Analytics, estruturando indicadores estratégicos de Recursos Humanos e apoiando lideranças na tomada de decisão baseada em dados.
+
+Formação Requerida:
+- Ensino Superior Completo em Estatística, Administração, Engenharia, Ciência de Dados ou áreas afins.
+
+Requisitos Obrigatórios:
+- Experiência sólida com SQL para extração e modelagem de dados;
+- Domínio de ferramentas de BI (Power BI ou Tableau) e criação de dashboards executivos;
+- Excel avançado e conhecimento em análise estatística aplicada (turnover, absenteísmo, pesquisa de clima);
+- Capacidade de traduzir dados complexos em recomendações claras para stakeholders.
+
+Requisitos Desejáveis:
+- Conhecimento em Python para análise preditiva e automação de relatórios;
+- Vivência prévia em RH, People Analytics ou sistemas de gestão (Senior / Vetorh);
+- Familiaridade com metodologias ágeis e LGPD aplicada a dados de colaboradores.`;
+
+            candidateQueue = [
+                {
+                    id: 'cand_demo_1',
+                    name: 'Mariana Almeida Costa',
+                    source: 'CV_Mariana_Costa_BI.pdf',
+                    status: 'Pronto',
+                    text: `MARIANA ALMEIDA COSTA
+Analista de BI & Dados | Especialista em Indicadores Estratégicos
+
+RESUMO PROFISSIONAL
+Profissional de Dados com 4 anos de experiência na estruturação de pipelines analíticos, modelagem SQL e desenvolvimento de dashboards executivos em Power BI. Forte atuação na padronização de métricas, auditoria de bases e suporte analítico à diretoria.
+
+EXPERIÊNCIA PROFISSIONAL
+Analista de Inteligência de Dados Pleno | Grupo Horizonte Logística (2023 – Atual)
+- Estruturei do zero o ecossistema de indicadores de RH e Operações no Power BI (DAX e Power Query), consolidando dados de 2.400 colaboradores e reduzindo o tempo de fechamento mensal em 65%.
+- Desenvolvi consultas SQL complexas (PostgreSQL) e rotinas de tratamento garantindo 99,8% de acurácia e conformidade com LGPD e governança de dados.
+- Analisei causas raízes de rotatividade (turnover) e absenteísmo por unidade, apresentando relatórios estatísticos que apoiaram planos de retenção com queda de 14% no turnover.
+- Documentei dicionários de dados e treinei analistas juniores nas boas práticas de validação estatística.
+
+Analista de Planejamento Júnior | TechVarejo S.A. (2021 – 2023)
+- Mantive e auditei planilhas críticas em Excel avançado (VBA, Tabelas Dinâmicas, Power Query) e painéis de acompanhamento de metas semanais.
+
+FORMAÇÃO ACADÊMICA
+- Bacharelado em Estatística — Universidade Estadual (Concluído em 2021)
+- Certificação Microsoft Power BI Data Analyst (PL-300)
+
+HABILIDADES TÉCNICAS
+SQL (PostgreSQL, SQL Server), Power BI (DAX, Power Query), Excel Avançado, Estatística Aplicada, People Analytics, Governança de Dados, LGPD, Storytelling.`
+                },
+                {
+                    id: 'cand_demo_2',
+                    name: 'Rafael Mendes Oliveira',
+                    source: 'Curriculo_Rafael_Mendes.pdf',
+                    status: 'Pronto',
+                    text: `RAFAEL MENDES OLIVEIRA
+Cientista de Dados & Automação Analítica
+
+RESUMO PROFISSIONAL
+Engenheiro de Produção com 3 anos de vivência em ciência de dados, modelagem preditiva em Python e bancos de dados SQL. Perfil orientado a resultados rápidos, inovação e automação de pipelines.
+
+EXPERIÊNCIA PROFISSIONAL
+Analista de Dados Sênior | FinTech NovaEra (2022 – Atual)
+- Criei modelos preditivos em Python (Pandas, Scikit-Learn) para previsão de churn de clientes, aumentando a retenção em 18%.
+- Liderei a migração de relatórios manuais para pipelines automatizados em SQL e Power BI, economizando 40 horas mensais da equipe.
+- Articulei alinhamentos estratégicos com stakeholders de produto e tecnologia utilizando metodologias ágeis (Scrum e Kanban).
+
+FORMAÇÃO ACADÊMICA
+- Bacharelado em Engenharia de Produção — Universidade Federal (Concluído em 2022)
+
+HABILIDADES TÉCNICAS
+Python, SQL, Power BI, Excel Avançado, Análise Preditiva, Metodologias Ágeis (Scrum), Automação.`
+                },
+                {
+                    id: 'cand_demo_3',
+                    name: 'Juliana Ribeiro Santos',
+                    source: 'Juliana_Santos_RH_Analytics.pdf',
+                    status: 'Pronto',
+                    text: `JULIANA RIBEIRO SANTOS
+Analista de Recursos Humanos & Indicadores de Pessoas
+
+RESUMO PROFISSIONAL
+Psicóloga com 5 anos de experiência em Recursos Humanos generalista, gestão de clima organizacional, recrutamento e acompanhamento de indicadores de RH em sistema Senior / Vetorh.
+
+EXPERIÊNCIA PROFISSIONAL
+Analista de RH Pleno | Indústria MetalSul (2021 – Atual)
+- Apoiei gerentes e coordenadores na análise mensal de indicadores de turnover, absenteísmo e pesquisa de clima organizacional.
+- Garanti a consistência dos cadastros e relatórios gerenciais extraídos do sistema Senior (Vetorh) e Excel avançado, respeitando normas da LGPD.
+- Colaborei com lideranças na condução de planos de desenvolvimento individual e comunicação interna.
+
+FORMAÇÃO ACADÊMICA
+- Graduação em Psicologia — PUC (Concluído em 2020)
+- Pós-graduação em Gestão Estratégica de Pessoas
+
+HABILIDADES TÉCNICAS
+Excel Avançado, Sistema Senior / Vetorh, Pesquisa de Clima, Turnover, Absenteísmo, LGPD, Comunicação e Engajamento.`
+                }
+            ];
+
+            renderCandidateQueue();
+            showToast('Lote de 3 candidatos carregado! Clique em "Analisar & Comparar Candidatos".', 'success');
+        }
+
+        function clearAllFields() {
+            document.getElementById('job-title').value = '';
+            document.getElementById('job-description').value = '';
+            document.getElementById('resume-text').value = '';
+            document.getElementById('manual-candidate-name').value = '';
+            document.getElementById('pdf-file-input').value = '';
+            updateCharCounter();
+
+            candidateQueue = [];
+            batchResults = [];
+            selectedCandidateId = null;
+            renderCandidateQueue();
+            
+            document.getElementById('dashboard-content').classList.add('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+            showToast('Todos os campos e a fila foram limpos.', 'info');
+        }
+
+        // ==========================================
+        // 5. MOTOR SEMÂNTICO LOCAL DETERMINÍSTICO AVANÇADO
+        // ==========================================
+        const STOPWORDS_PT = new Set([
+            'a', 'o', 'e', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas',
+            'por', 'para', 'com', 'sem', 'sob', 'sobre', 'entre', 'ate', 'apos', 'antes',
+            'que', 'qual', 'quais', 'quem', 'onde', 'como', 'quando', 'quanto', 'porque',
+            'um', 'uma', 'uns', 'umas', 'ao', 'aos', 'as', 'os', 'pelo', 'pela', 'pelos', 'pelas',
+            'este', 'esta', 'estes', 'estas', 'esse', 'essa', 'esses', 'essas', 'aquele', 'aquela',
+            'seu', 'sua', 'seus', 'suas', 'nosso', 'nossa', 'mais', 'menos', 'muito', 'muita',
+            'ja', 'ainda', 'tambem', 'apenas', 'somente', 'assim', 'bem', 'mal', 'sim', 'nao',
+            'ser', 'estar', 'ter', 'haver', 'fazer', 'ir', 'vir', 'ver', 'dar', 'poder', 'dever',
+            'conhecimentos', 'conhecimento', 'experiencia', 'experiencias', 'vivencia', 'vivencias',
+            'habilidades', 'habilidade', 'requisitos', 'requisito', 'desejavel', 'desejaveis',
+            'obrigatorio', 'obrigatorios', 'obrigatoria', 'cargo', 'vaga', 'empresa', 'empresas',
+            'atividades', 'atividade', 'funcoes', 'funcao', 'rotinas', 'rotina', 'formacao',
+            'curso', 'cursos', 'superior', 'completo', 'incompleto', 'cursando', 'pos', 'graduacao',
+            'area', 'areas', 'afins', 'pacote', 'nivel', 'bom', 'boa', 'bons', 'boas', 'forte',
+            'solida', 'solido', 'perfil', 'trabalho', 'equipe', 'equipes', 'atuacao', 'foco',
+            'capacidade', 'dominio', 'uso', 'ferramentas', 'ferramenta', 'sistemas', 'sistema',
+            'etc', 'buscamos', 'atuar', 'principais', 'responsabilidades', 'diferencial', 'diferenciais',
+            'necessario', 'necessaria', 'basico', 'intermediario', 'avancado', 'aplicada', 'aplicado',
+            'criacao', 'desenvolvimento', 'elaboracao', 'acompanhamento', 'apoio', 'suporte',
+            'relatorios', 'relatorio', 'processos', 'processo', 'projetos', 'projeto', 'resultados',
+            'tomada', 'decisao', 'claras', 'claro', 'complexos', 'complexo', 'previa', 'previo',
+            'familiaridade', 'colaboradores', 'colaborador', 'profissional', 'profissionais',
+            'ensino', 'requerida', 'requerido', 'meio', 'atraves', 'dentro', 'fora', 'junto'
+        ]);
+
+        // Dicionário de Equivalências Acadêmicas e Áreas Afins
+        const ACADEMIC_GROUPS = [
+            {
+                id: 'estatistica_dados',
+                name: 'Estatística, Matemática ou Ciência de Dados',
+                terms: ['estatistica', 'estatistico', 'matematica', 'matematico', 'ciencia de dados', 'ciencias de dados', 'data science', 'atuaria', 'ciencias atuariais', 'analytics']
+            },
+            {
+                id: 'administracao_negocios',
+                name: 'Administração ou Gestão Empresarial',
+                terms: ['administracao', 'administrador', 'adm', 'gestao empresarial', 'processos gerenciais', 'gestao de negocios', 'administracao de empresas', 'comercio exterior', 'logistica']
+            },
+            {
+                id: 'engenharia',
+                name: 'Engenharia (Produção, Computação, Civil, etc.)',
+                terms: ['engenharia', 'engenheiro', 'engenheira', 'engenharia de producao', 'engenharia da computacao', 'engenharia eletrica', 'engenharia mecanica', 'engenharia civil']
+            },
+            {
+                id: 'tecnologia_ti',
+                name: 'Tecnologia da Informação / Sistemas / Computação',
+                terms: ['tecnologia da informacao', 'sistemas de informacao', 'ciencia da computacao', 'ciencias da computacao', 'analise e desenvolvimento de sistemas', 'ads', 'engenharia de software', 'informatica', 'redes de computadores', 'banco de dados']
+            },
+            {
+                id: 'rh_psicologia',
+                name: 'Psicologia ou Gestão de Recursos Humanos',
+                terms: ['psicologia', 'psicologo', 'psicologa', 'recursos humanos', 'gestao de pessoas', 'gestao de recursos humanos', 'rh', 'departamento pessoal']
+            },
+            {
+                id: 'contabilidade_economia',
+                name: 'Ciências Contábeis, Economia ou Finanças',
+                terms: ['contabilidade', 'ciencias contabeis', 'contador', 'contadora', 'economia', 'ciencias economicas', 'economista', 'financas', 'gestao financeira', 'controladoria']
+            },
+            {
+                id: 'direito',
+                name: 'Direito / Ciências Jurídicas',
+                terms: ['direito', 'ciencias juridicas', 'advogado', 'advogada', 'juridico']
+            },
+            {
+                id: 'comunicacao_marketing',
+                name: 'Marketing, Publicidade ou Comunicação',
+                terms: ['marketing', 'publicidade', 'propaganda', 'comunicacao social', 'jornalismo', 'relacoes publicas']
+            }
+        ];
+
+        // Dicionário de Equivalências Técnicas e Ferramentas
+        const TECHNICAL_COMPETENCIES = [
+            {
+                id: 'power_bi',
+                label: 'Power BI / Visualização de Dados (DAX, Power Query)',
+                terms: ['power bi', 'powerbi', 'dax', 'power query', 'business intelligence', 'ferramentas de bi', 'dashboards', 'dashboard']
+            },
+            {
+                id: 'tableau',
+                label: 'Tableau / Analytics Visual',
+                terms: ['tableau', 'looker', 'qlik', 'qlikview', 'qliksense', 'metabase']
+            },
+            {
+                id: 'sql_db',
+                label: 'SQL & Modelagem de Banco de Dados',
+                terms: ['sql', 'postgresql', 'postgres', 'mysql', 'sql server', 'oracle', 'tsql', 'plsql', 'banco de dados', 'bancos de dados', 'etl']
+            },
+            {
+                id: 'excel_vba',
+                label: 'Excel Avançado / VBA / Planilhas',
+                terms: ['excel', 'vba', 'macros', 'tabela dinamica', 'tabelas dinamicas', 'procv', 'procx', 'planilhas', 'google sheets']
+            },
+            {
+                id: 'python_r',
+                label: 'Python / R / Programação Analítica',
+                terms: ['python', 'pandas', 'numpy', 'scikit', 'linguagem r', 'rstudio', 'analise preditiva', 'machine learning']
+            },
+            {
+                id: 'people_analytics',
+                label: 'People Analytics & Indicadores de RH (Turnover, Clima)',
+                terms: ['people analytics', 'indicadores de rh', 'turnover', 'rotatividade', 'absenteismo', 'pesquisa de clima', 'retencao', 'kpis de rh', 'metricas de rh']
+            },
+            {
+                id: 'erp_senior',
+                label: 'Sistemas ERP / Gestão de RH (Senior, Vetorh, Sapiens, SAP)',
+                terms: ['senior', 'vetorh', 'sapiens', 'totvs', 'protheus', 'sap', 'erp', 'folha de pagamento', 'ponto eletronico']
+            },
+            {
+                id: 'automacao_rpa',
+                label: 'Automação de Processos (Power Automate, n8n, RPA)',
+                terms: ['power automate', 'n8n', 'rpa', 'automacao', 'automatizar', 'automatizacao', 'uipath', 'zapier', 'make']
+            },
+            {
+                id: 'estatistica_aplicada',
+                label: 'Análise Estatística & KPIs Estratégicos',
+                terms: ['estatistica', 'estatistico', 'indicadores', 'kpis', 'metricas', 'acuracia', 'correlacao', 'regressao', 'storytelling']
+            },
+            {
+                id: 'lgpd_governanca',
+                label: 'LGPD & Governança de Dados',
+                terms: ['lgpd', 'governanca de dados', 'seguranca da informacao', 'auditoria', 'compliance', 'conformidade', 'dicionario de dados']
+            },
+            {
+                id: 'metodologias_ageis',
+                label: 'Metodologias Ágeis (Scrum, Kanban)',
+                terms: ['metodologias ageis', 'agile', 'scrum', 'kanban', 'jira', 'trello', 'okr', 'okrs']
+            },
+            {
+                id: 'gestao_lideranca',
+                label: 'Gestão de Projetos, Processos & Stakeholders',
+                terms: ['stakeholders', 'gestao de projetos', 'lideranca', 'planejamento estrategico', 'orcamento', 'budget', 'forecast']
+            },
+            {
+                id: 'dev_web',
+                label: 'Desenvolvimento Web / Software (JS, React, Node, APIs)',
+                terms: ['javascript', 'typescript', 'react', 'angular', 'vue', 'node', 'nodejs', 'html', 'css', 'api', 'apis', 'rest', 'git']
+            },
+            {
+                id: 'cloud_devops',
+                label: 'Cloud Computing (AWS, Azure, GCP)',
+                terms: ['aws', 'azure', 'gcp', 'google cloud', 'docker', 'kubernetes', 'ci/cd']
+            },
+            {
+                id: 'idiomas_ingles',
+                label: 'Idioma Inglês',
+                terms: ['ingles', 'english', 'bilingue']
+            }
+        ];
+
+        function normalizeText(str) {
+            return str
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^\w\s\/\-\+]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        // Stemming / Lematização básica em Português para aproximar radicais
+        function stemPt(word) {
+            if (word.length <= 4) return word;
+            return word
+                .replace(/(amentos|imentos|amento|imento)$/, '')
+                .replace(/(acoes|icoes|acao|icao)$/, '')
+                .replace(/(idades|idade)$/, '')
+                .replace(/(isticas|istico|istica|isticos)$/, 'ist')
+                .replace(/(izadores|izador|izacao|izar)$/, 'iz')
+                .replace(/(adores|ador|adora)$/, '')
+                .replace(/(mente)$/, '')
+                .replace(/(ando|endo|indo)$/, '')
+                .replace(/(aram|eram|iram|ava|iam)$/, '')
+                .replace(/(s)$/, '');
+        }
+
+        function containsTermSemantically(normalizedCorpus, stemmedSet, term) {
+            const normTerm = normalizeText(term);
+            if (!normTerm) return false;
+
+            // 1. Busca exata por limite de palavra
+            const escaped = normTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(?:^|\\s|\\/|\\-)${escaped}(?:$|\\s|\\/|\\-)`, 'i');
+            if (regex.test(normalizedCorpus)) return true;
+
+            // 2. Para palavras únicas >= 6 caracteres, verifica radical (stemming)
+            if (!normTerm.includes(' ') && normTerm.length >= 6) {
+                const stemmedTerm = stemPt(normTerm);
+                if (stemmedTerm.length >= 5 && stemmedSet.has(stemmedTerm)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        async function runBatchAnalysis() {
+            const jobTitle = document.getElementById('job-title').value.trim();
+            const jobDesc = document.getElementById('job-description').value.trim();
+            const pendingManualText = document.getElementById('resume-text').value.trim();
+
+            if (!jobTitle || !jobDesc) {
+                showToast('Informe o Título do Cargo e a Descrição da Vaga.', 'error');
+                return;
+            }
+
+            // Se o usuário colou texto na aba manual e esqueceu de clicar em "Adicionar à Fila", incorpora automaticamente
+            if (candidateQueue.length === 0 && pendingManualText.length >= 40) {
+                addManualCandidateToBatch();
+            }
+
+            if (candidateQueue.length === 0) {
+                showToast('Anexe pelo menos 1 currículo (PDF/TXT ou texto colado) antes de analisar.', 'error');
+                return;
+            }
+
+            // UI Loading
+            const btn = document.getElementById('analyze-btn');
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('dashboard-content').classList.add('hidden');
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('loading-state').classList.add('flex');
+            document.getElementById('loading-title').textContent = `Analisando e Confrontando ${candidateQueue.length} Candidato(s)...`;
+
+            await new Promise(r => setTimeout(r, 600));
+
+            try {
+                const analyzedList = candidateQueue.map(cand => {
+                    const result = analyzeCandidateDeterministic(jobTitle, jobDesc, cand.text, cand.name);
+                    cand.status = 'Analisado';
+                    return {
+                        id: cand.id,
+                        source: cand.source,
+                        jobTitle,
+                        ...result
+                    };
+                });
+
+                // Ordena do maior Match Score para o menor (desempate por Técnico e depois Formação)
+                analyzedList.sort((a, b) => {
+                    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+                    if (b.pillars.technical !== a.pillars.technical) return b.pillars.technical - a.pillars.technical;
+                    return b.pillars.education - a.pillars.education;
+                });
+
+                batchResults = analyzedList;
+                selectedCandidateId = batchResults[0].id;
+
+                renderCandidateQueue();
+                renderBatchComparison(batchResults, jobTitle);
+                selectCandidateForInspection(selectedCandidateId, false);
+
+                showToast(`Confronto concluído! 1º Lugar: ${batchResults[0].candidateName} (${batchResults[0].matchScore}%).`, 'success');
+            } catch (error) {
+                console.error('Erro na análise em lote:', error);
+                showToast('Ocorreu um erro ao processar o lote de currículos.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('loading-state').classList.remove('flex');
+            }
+        }
+
+        function analyzeCandidateDeterministic(jobTitle, jobDesc, resumeText, explicitCandidateName = '') {
+            const fullJobRaw = `${jobTitle}\n${jobDesc}`;
+            const normJob = normalizeText(fullJobRaw);
+            const normResume = normalizeText(resumeText);
+
+            const jobWords = normJob.split(/\s+/);
+            const resumeWords = normResume.split(/\s+/);
+            const jobStemSet = new Set(jobWords.map(stemPt));
+            const resumeStemSet = new Set(resumeWords.map(stemPt));
+
+            // 1. Nome do Candidato
+            let candidateName = explicitCandidateName || inferCandidateName(resumeText);
+
+            // 2. PILAR 1: FORMAÇÃO ACADÊMICA & ÁREA AFIM (Peso 30%)
+            const jobRequestedEduGroups = ACADEMIC_GROUPS.filter(group =>
+                group.terms.some(term => containsTermSemantically(normJob, jobStemSet, term))
+            );
+
+            const resumeMatchedEduGroups = ACADEMIC_GROUPS.filter(group =>
+                group.terms.some(term => containsTermSemantically(normResume, resumeStemSet, term))
+            );
+
+            // Extrai linhas explícitas de formação do currículo para exibição clara
+            const eduLines = resumeText
+                .split('\n')
+                .map(l => l.trim())
+                .filter(l => /bacharel|licenciatura|tecnologo|graduacao|pos-graduacao|mba|mestrado|doutorado|estatistica|administracao|engenharia|psicologia|computacao|sistemas|contabeis|economia|direito|marketing/i.test(normalizeText(l)) && l.length < 110);
+
+            let eduScore = 85;
+            let educationSummaryText = "";
+            let educationGap = null;
+
+            if (jobRequestedEduGroups.length > 0) {
+                const directEduMatches = jobRequestedEduGroups.filter(jg =>
+                    resumeMatchedEduGroups.some(rg => rg.id === jg.id)
+                );
+
+                if (directEduMatches.length > 0) {
+                    eduScore = 100;
+                    const matchedNames = directEduMatches.map(g => g.name).join(' / ');
+                    const rawDegreeSnippet = eduLines.length > 0 ? ` (${eduLines[0].replace(/^[-•*]\s*/, '')})` : '';
+                    educationSummaryText = `Formação compatível confirmada: ${matchedNames}${rawDegreeSnippet}.`;
+                } else if (resumeMatchedEduGroups.length > 0) {
+                    eduScore = 65;
+                    const foundNames = resumeMatchedEduGroups.map(g => g.name).join(', ');
+                    const reqNames = jobRequestedEduGroups.map(g => g.name).join(' ou ');
+                    educationSummaryText = `Formação identificada em ${foundNames} (vaga solicita preferencialmente ${reqNames}).`;
+                    educationGap = `Formação superior específica em ${reqNames} (candidato possui formação em ${foundNames})`;
+                } else {
+                    eduScore = 35;
+                    const reqNames = jobRequestedEduGroups.map(g => g.name).join(' ou ');
+                    educationSummaryText = `Não foi identificada graduação explícita na área de ${reqNames} no texto enviado.`;
+                    educationGap = `Formação acadêmica em ${reqNames} não identificada explicitamente no currículo`;
+                }
+            } else {
+                // Vaga não restringiu curso específico
+                if (resumeMatchedEduGroups.length > 0) {
+                    eduScore = 95;
+                    const foundNames = resumeMatchedEduGroups.map(g => g.name).join(', ');
+                    const rawDegreeSnippet = eduLines.length > 0 ? ` — ${eduLines[0].replace(/^[-•*]\s*/, '')}` : '';
+                    educationSummaryText = `Formação identificada em ${foundNames}${rawDegreeSnippet}.`;
+                } else if (eduLines.length > 0) {
+                    eduScore = 90;
+                    educationSummaryText = `Qualificação acadêmica identificada: ${eduLines[0].replace(/^[-•*]\s*/, '')}.`;
+                } else {
+                    eduScore = 80;
+                    educationSummaryText = `A vaga não exige curso superior específico; avaliação focada nas entregas técnicas.`;
+                }
+            }
+
+            // 3. PILAR 2: COMPETÊNCIAS TÉCNICAS & FERRAMENTAS (Peso 50%)
+            const requiredTechs = TECHNICAL_COMPETENCIES.filter(comp =>
+                comp.terms.some(term => containsTermSemantically(normJob, jobStemSet, term))
+            );
+
+            const matchedTechs = [];
+            const missingTechs = [];
+
+            requiredTechs.forEach(comp => {
+                const hasInResume = comp.terms.some(term => containsTermSemantically(normResume, resumeStemSet, term));
+                if (hasInResume) {
+                    matchedTechs.push(comp);
+                } else {
+                    missingTechs.push(comp);
+                }
+            });
+
+            // Verifica também competências extras relevantes que o candidato possui mesmo que não explícitas
+            const bonusTechs = TECHNICAL_COMPETENCIES.filter(comp =>
+                !requiredTechs.some(r => r.id === comp.id) &&
+                comp.terms.some(term => containsTermSemantically(normResume, resumeStemSet, term))
+            );
+
+            let techScore = 75;
+            if (requiredTechs.length > 0) {
+                techScore = Math.round((matchedTechs.length / requiredTechs.length) * 100);
+            } else if (bonusTechs.length > 0) {
+                techScore = Math.min(95, 70 + bonusTechs.length * 6);
+            }
+
+            // 4. PILAR 3: SENIORIDADE, MÉTRICAS E CONTEXTO (Peso 20%)
+            const meaningfulJobTokens = [...new Set(
+                jobWords.filter(w => w.length >= 5 && !STOPWORDS_PT.has(w) && !/^\d+$/.test(w))
+            )];
+
+            let contextMatches = 0;
+            meaningfulJobTokens.forEach(tok => {
+                if (containsTermSemantically(normResume, resumeStemSet, tok)) {
+                    contextMatches++;
+                }
+            });
+
+            const tokenRatio = meaningfulJobTokens.length > 0
+                ? Math.min(1, contextMatches / (meaningfulJobTokens.length * 0.55))
+                : 0.75;
+
+            // Bônus por resultados quantificáveis (%, números, reduziu, aumentou, anos de experiência)
+            const hasQuantResults = /(\d+%|\d+\s*anos|reduzi|aumentei|economi|otimizei|estruturei|liderei)/i.test(normResume);
+            const ctxScore = Math.min(100, Math.round(tokenRatio * 80 + (hasQuantResults ? 20 : 5)));
+
+            // CÁLCULO FINAL PONDERADO: 30% Formação + 50% Técnico + 20% Contexto
+            const matchScore = Math.min(99, Math.max(25, Math.round(
+                (eduScore * 0.30) + (techScore * 0.50) + (ctxScore * 0.20)
+            )));
+
+            let matchClassification = 'Alta Aderência';
+            if (matchScore < 55) matchClassification = 'Baixa Aderência';
+            else if (matchScore < 75) matchClassification = 'Aderência Moderada';
+
+            // 5. MONTAGEM DOS PONTOS FORTES E GAPS REAIS (ZERO PALAVRAS GENÉRICAS)
+            const strengths = [];
+            matchedTechs.forEach(t => strengths.push(`Domínio comprovado em ${t.label}`));
+            if (hasQuantResults) {
+                strengths.push('Histórico orientado a resultados mensuráveis com indicadores quantitativos');
+            }
+            bonusTechs.slice(0, 2).forEach(b => {
+                if (strengths.length < 6) {
+                    strengths.push(`Competência complementar agregadora: ${b.label}`);
+                }
+            });
+            if (strengths.length === 0) {
+                strengths.push(`Alinhamento de experiência profissional com o escopo de ${jobTitle}`);
+            }
+
+            const weaknesses = [];
+            if (educationGap) {
+                weaknesses.push(educationGap);
+            }
+            missingTechs.forEach(m => {
+                weaknesses.push(`Requisito técnico da vaga não evidenciado no currículo: ${m.label}`);
+            });
+
+            // 6. ANÁLISE DISC LINGUÍSTICA (VERBOS DE AÇÃO E SUBSTANTIVOS COMPORTAMENTAIS)
+            const discLexicon = {
+                D: [
+                    { word: 'estruturei', label: 'estruturei' },
+                    { word: 'liderei', label: 'liderei' },
+                    { word: 'lideranca', label: 'liderança' },
+                    { word: 'aumentei', label: 'aumentei' },
+                    { word: 'reduzi', label: 'reduzi' },
+                    { word: 'implantei', label: 'implantei' },
+                    { word: 'criei', label: 'criei' },
+                    { word: 'metas', label: 'metas' },
+                    { word: 'diretoria', label: 'diretoria' },
+                    { word: 'estrategia', label: 'estratégia' },
+                    { word: 'estrategicos', label: 'estratégicos' },
+                    { word: 'otimizei', label: 'otimizei' },
+                    { word: 'decisao', label: 'decisão' },
+                    { word: 'gerenciei', label: 'gerenciei' },
+                    { word: 'conquistei', label: 'conquistei' }
+                ],
+                I: [
+                    { word: 'treinei', label: 'treinei' },
+                    { word: 'apresentando', label: 'apresentando' },
+                    { word: 'apresentei', label: 'apresentei' },
+                    { word: 'colaborei', label: 'colaborei' },
+                    { word: 'stakeholders', label: 'stakeholders' },
+                    { word: 'storytelling', label: 'storytelling' },
+                    { word: 'comunicacao', label: 'comunicação' },
+                    { word: 'multidisciplinares', label: 'multidisciplinares' },
+                    { word: 'negociei', label: 'negociei' },
+                    { word: 'articulei', label: 'articulei' },
+                    { word: 'engajei', label: 'engajei' },
+                    { word: 'clientes', label: 'clientes' },
+                    { word: 'alinhei', label: 'alinhei' },
+                    { word: 'alinhar', label: 'alinhar' }
+                ],
+                S: [
+                    { word: 'mantive', label: 'mantive' },
+                    { word: 'apoiei', label: 'apoiei' },
+                    { word: 'garantindo', label: 'garantindo' },
+                    { word: 'garanti', label: 'garanti' },
+                    { word: 'rotinas', label: 'rotinas' },
+                    { word: 'acompanhamento', label: 'acompanhamento' },
+                    { word: 'suporte', label: 'suporte' },
+                    { word: 'padronizacao', label: 'padronização' },
+                    { word: 'recorrentes', label: 'recorrentes' },
+                    { word: 'consistencia', label: 'consistência' },
+                    { word: 'continuidade', label: 'continuidade' },
+                    { word: 'colaboradores', label: 'colaboradores' }
+                ],
+                C: [
+                    { word: 'analisei', label: 'analisei' },
+                    { word: 'auditei', label: 'auditei' },
+                    { word: 'auditoria', label: 'auditoria' },
+                    { word: 'acuracia', label: 'acurácia' },
+                    { word: 'conformidade', label: 'conformidade' },
+                    { word: 'lgpd', label: 'LGPD' },
+                    { word: 'governanca', label: 'governança' },
+                    { word: 'estatistica', label: 'estatística' },
+                    { word: 'estatisticos', label: 'estatísticos' },
+                    { word: 'normas', label: 'normas' },
+                    { word: 'precisao', label: 'precisão' },
+                    { word: 'documentei', label: 'documentei' },
+                    { word: 'validacao', label: 'validação' },
+                    { word: 'indicadores', label: 'indicadores' },
+                    { word: 'sql', label: 'SQL' }
+                ]
+            };
+
+            const discScoresRaw = { D: 3, I: 3, S: 3, C: 3 };
+            const discFoundWords = { D: [], I: [], S: [], C: [] };
+
+            Object.keys(discLexicon).forEach(dim => {
+                discLexicon[dim].forEach(entry => {
+                    if (containsTermSemantically(normResume, resumeStemSet, entry.word)) {
+                        discScoresRaw[dim] += 3;
+                        if (!discFoundWords[dim].includes(entry.label) && discFoundWords[dim].length < 4) {
+                            discFoundWords[dim].push(entry.label);
+                        }
+                    }
+                });
+            });
+
+            const totalDisc = discScoresRaw.D + discScoresRaw.I + discScoresRaw.S + discScoresRaw.C;
+            const D = Math.round((discScoresRaw.D / totalDisc) * 100);
+            const I = Math.round((discScoresRaw.I / totalDisc) * 100);
+            const S = Math.round((discScoresRaw.S / totalDisc) * 100);
+            const C = 100 - (D + I + S);
+
+            const discFullNames = {
+                D: 'Dominância (Foco em Resultados e Decisão)',
+                I: 'Influência (Comunicação e Engajamento)',
+                S: 'Estabilidade (Consistência e Processos)',
+                C: 'Conformidade (Análise, Dados e Precisão)'
+            };
+
+            const sortedDisc = Object.entries({ D, I, S, C }).sort((a, b) => b[1] - a[1]);
+            const top1 = sortedDisc[0][0];
+            const top2 = sortedDisc[1][0];
+
+            const topEvidenceTerms = [...discFoundWords[top1], ...discFoundWords[top2]].slice(0, 6);
+            const evidenceText = topEvidenceTerms.length > 0
+                ? `Predominância de ${discFullNames[top1].split(' ')[0]} (${sortedDisc[0][1]}%) e ${discFullNames[top2].split(' ')[0]} (${sortedDisc[1][1]}%), sustentada pelos termos extraídos do currículo: "${topEvidenceTerms.join('", "')}".`
+                : `Escrita profissional equilibrada entre execução operacional, análise técnica e colaboração entre áreas.`;
+
+            // 7. RESUMO EXECUTIVO E ROTEIRO DE ENTREVISTA
+            const matchSummary = matchScore >= 75
+                ? `Alta compatibilidade (${matchScore}%) para ${jobTitle}. O candidato apresenta formação aderente (${eduScore}%) e domínio sólido nos requisitos técnicos mapeados (${techScore}%).`
+                : matchScore >= 55
+                ? `Aderência moderada (${matchScore}%) para ${jobTitle}. A base acadêmica e os fundamentos estão presentes, mas há lacunas pontuais em ferramentas específicas da vaga.`
+                : `Baixa aderência inicial (${matchScore}%) para ${jobTitle}. Recomenda-se avaliar se as competências ausentes podem ser desenvolvidas no curto prazo.`;
+
+            const interviewQuestions = [];
+
+            if (missingTechs.length > 0) {
+                interviewQuestions.push({
+                    type: 'Técnica (Validação de Gap)',
+                    question: `A vaga solicita vivência com ${missingTechs[0].label}. Você já teve contato prático ou acadêmico com essa frente, ou como estruturaria sua curva de aprendizado?`
+                });
+            } else {
+                interviewQuestions.push({
+                    type: 'Técnica (Aprofundamento)',
+                    question: `Você atende aos principais requisitos técnicos de ${jobTitle}. Qual foi o desafio mais complexo que resolveu recentemente usando essas ferramentas?`
+                });
+            }
+
+            if (matchedTechs.length > 0) {
+                interviewQuestions.push({
+                    type: 'Técnica (Evidência de Impacto)',
+                    question: `Sobre sua experiência com ${matchedTechs[0].label}, conte como você estruturou a solução e qual foi o ganho mensurável gerado para a área.`
+                });
+            }
+
+            interviewQuestions.push({
+                type: `Comportamental (Perfil ${top1}/${top2})`,
+                question: `Pela forma como você descreve suas entregas, nota-se forte orientação para ${discFullNames[top1].toLowerCase()}. Como você atua quando precisa equilibrar rigor técnico com prazos curtos de entrega?`
+            });
+
+            interviewQuestions.push({
+                type: 'Comportamental (Alinhamento de Stakeholders)',
+                question: `Relate uma situação em que você precisou defender uma recomendação técnica para gestores ou áreas clientes que tinham outra visão inicial.`
+            });
+
+            return {
+                candidateName,
+                matchScore,
+                matchClassification,
+                matchSummary,
+                pillars: {
+                    education: eduScore,
+                    technical: techScore,
+                    context: ctxScore
+                },
+                educationSummaryText,
+                strengths,
+                weaknesses,
+                disc: {
+                    D, I, S, C,
+                    dominantCode: `${top1}/${top2}`,
+                    dominantLabel: `${top1} / ${top2} (${discFullNames[top1].split(' ')[0]})`,
+                    evidence: evidenceText
+                },
+                interviewQuestions
+            };
+        }
+
+        // ==========================================
+        // 6. RENDERIZAÇÃO DO CONFRONTO COMPARATIVO & PÓDIO
+        // ==========================================
+        function renderBatchComparison(results, jobTitle) {
+            document.getElementById('dashboard-content').classList.remove('hidden');
+
+            const total = results.length;
+            document.getElementById('analysis-engine-badge').textContent = total > 1 ? 'Confronto Concluído' : 'Análise Individual';
+            document.getElementById('batch-summary-header').textContent = total > 1
+                ? `${total} Candidatos Comparados • Melhor Fit: ${results[0].candidateName}`
+                : `1 Candidato Avaliado: ${results[0].candidateName}`;
+
+            // Renderiza Cards de Pódio (Top 3 ou todos se <= 3)
+            const podiumContainer = document.getElementById('podium-cards-container');
+            const podiumCandidates = results.slice(0, 3);
+
+            podiumContainer.innerHTML = podiumCandidates.map((cand, idx) => {
+                const rank = idx + 1;
+                const isFirst = rank === 1;
+                const isSelected = cand.id === selectedCandidateId;
+
+                const rankBadgeStyle = isFirst
+                    ? 'bg-gradient-to-r from-[#C5D94D] to-[#98B838] text-[#0F1412]'
+                    : rank === 2
+                    ? 'bg-[#2F834A]/30 text-[#C5D94D] border border-[#2F834A]/60'
+                    : 'bg-[#1E2723] text-gray-300 border border-[#2D3B35]';
+
+                const cardBorderStyle = isSelected
+                    ? 'border-[#C5D94D] ring-1 ring-[#C5D94D]/40 bg-[#1E2723]'
+                    : isFirst
+                    ? 'border-[#2F834A] bg-[#1E2723]/80 hover:border-[#C5D94D]'
+                    : 'border-[#2D3B35] bg-[#0F1412] hover:border-[#3F524A]';
+
+                const topStrengthShort = cand.strengths[0]
+                    ? cand.strengths[0].replace(/^Domínio comprovado em\s+/i, '')
+                    : 'Alinhamento geral';
+
+                return `
+                    <div onclick="selectCandidateForInspection('${cand.id}', true)"
+                        class="cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between print-card ${cardBorderStyle}">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-2.5">
+                                <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide ${rankBadgeStyle}">
+                                    ${isFirst ? '★ 1º Lugar • Melhor Fit' : `${rank}º Lugar`}
+                                </span>
+                                <span class="font-display font-extrabold text-xl ${isFirst ? 'text-[#C5D94D]' : 'text-white'} print-text-dark">
+                                    ${cand.matchScore}%
+                                </span>
+                            </div>
+
+                            <h4 class="font-display font-bold text-sm text-white print-text-dark truncate mb-1" title="${escapeHtml(cand.candidateName)}">
+                                ${escapeHtml(cand.candidateName)}
+                            </h4>
+                            <p class="text-[11px] text-gray-400 print-text-muted line-clamp-2 mb-3">
+                                ${escapeHtml(topStrengthShort)}
+                            </p>
+                        </div>
+
+                        <div class="pt-2.5 border-t border-[#2D3B35] flex items-center justify-between text-[11px]">
+                            <span class="text-gray-400">Form: <strong class="text-gray-200">${cand.pillars.education}%</strong> • Técn: <strong class="text-gray-200">${cand.pillars.technical}%</strong></span>
+                            <span class="px-2 py-0.5 rounded bg-[#161D1A] text-[#C5D94D] font-bold border border-[#2D3B35]">
+                                DISC ${cand.disc.dominantCode}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Gera Parecer Comparativo Executivo
+            const verdictEl = document.getElementById('executive-comparison-verdict');
+            const first = results[0];
+            if (results.length === 1) {
+                verdictEl.textContent = `${first.candidateName} obteve ${first.matchScore}% de aderência geral para ${jobTitle}, destacando-se com ${first.pillars.education}% em Formação e ${first.pillars.technical}% em Competências Técnicas. Adicione mais currículos à fila para gerar um confronto comparativo entre candidatos.`;
+            } else {
+                const second = results[1];
+                const diff = first.matchScore - second.matchScore;
+                const firstAdvantage = first.pillars.technical > second.pillars.technical
+                    ? `maior cobertura dos requisitos técnicos (${first.pillars.technical}% vs ${second.pillars.technical}%)`
+                    : first.pillars.education > second.pillars.education
+                    ? `formação acadêmica mais alinhada (${first.pillars.education}% vs ${second.pillars.education}%)`
+                    : `maior consistência geral de contexto e entregas (${first.pillars.context}% vs ${second.pillars.context}%)`;
+
+                const secondAdvantage = second.pillars.technical > first.pillars.technical
+                    ? `domínio técnico superior (${second.pillars.technical}%)`
+                    : second.pillars.education > first.pillars.education
+                    ? `aderência acadêmica (${second.pillars.education}%)`
+                    : `perfil comportamental complementar (${second.disc.dominantLabel})`;
+
+                verdictEl.textContent = `${first.candidateName} lidera o ranking com ${first.matchScore}% de aderência (${diff > 0 ? `+${diff} p.p. à frente de ${second.candidateName}` : `empatado em score total com ${second.candidateName}, vencendo nos critérios técnicos`}), impulsionado por ${firstAdvantage}. Como alternativa estratégica, ${second.candidateName} (2º lugar, ${second.matchScore}%) destaca-se por ${secondAdvantage} e pode ser priorizado caso a equipe valorize esse diferencial.`;
+            }
+
+            // Renderiza Matriz Comparativa Lado a Lado
+            const matrixBody = document.getElementById('comparison-matrix-body');
+            matrixBody.innerHTML = results.map((cand, idx) => {
+                const rank = idx + 1;
+                const isSelected = cand.id === selectedCandidateId;
+                const mainGap = cand.weaknesses.length > 0
+                    ? cand.weaknesses[0].replace(/^Requisito técnico da vaga não evidenciado no currículo:\s*/i, '')
+                    : 'Sem gaps críticos';
+
+                return `
+                    <tr onclick="selectCandidateForInspection('${cand.id}', true)"
+                        class="cursor-pointer transition-colors ${isSelected ? 'bg-[#1E2723] text-white' : 'hover:bg-[#1E2723]/60 text-gray-300'}">
+                        <td class="py-2.5 px-3 font-display font-bold ${rank === 1 ? 'text-[#C5D94D]' : 'text-gray-400'}">
+                            ${rank}º
+                        </td>
+                        <td class="py-2.5 px-3 font-semibold text-white whitespace-nowrap max-w-[160px] truncate">
+                            ${escapeHtml(cand.candidateName)}
+                        </td>
+                        <td class="py-2.5 px-2.5 text-center font-display font-extrabold ${cand.matchScore >= 75 ? 'text-[#C5D94D]' : cand.matchScore >= 55 ? 'text-amber-300' : 'text-red-400'}">
+                            ${cand.matchScore}%
+                        </td>
+                        <td class="py-2.5 px-2 text-center text-gray-300">${cand.pillars.education}%</td>
+                        <td class="py-2.5 px-2 text-center text-gray-300">${cand.pillars.technical}%</td>
+                        <td class="py-2.5 px-2 text-center text-gray-300">${cand.pillars.context}%</td>
+                        <td class="py-2.5 px-2.5 text-center">
+                            <span class="px-1.5 py-0.5 rounded bg-[#0F1412] border border-[#2D3B35] text-[#C5D94D] font-bold text-[10px]">
+                                ${cand.disc.dominantCode}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-3 text-[11px] ${cand.weaknesses.length === 0 ? 'text-[#C5D94D]' : 'text-amber-300/90'} max-w-[200px] truncate" title="${escapeHtml(mainGap)}">
+                            ${escapeHtml(mainGap)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderComparisonRadarChart(results);
+        }
+
+        function switchRadarMode(mode) {
+            currentRadarMode = mode;
+            const btnPillars = document.getElementById('radar-mode-pillars');
+            const btnDisc = document.getElementById('radar-mode-disc');
+            const subtitle = document.getElementById('radar-subtitle');
+
+            if (mode === 'pillars') {
+                btnPillars.className = 'px-2 py-1 rounded-md text-[11px] font-semibold bg-[#1E2723] text-[#C5D94D]';
+                btnDisc.className = 'px-2 py-1 rounded-md text-[11px] font-semibold text-gray-400 hover:text-white';
+                subtitle.textContent = 'Comparativo dos Top candidatos nos 3 pilares de aderência';
+            } else {
+                btnDisc.className = 'px-2 py-1 rounded-md text-[11px] font-semibold bg-[#1E2723] text-[#C5D94D]';
+                btnPillars.className = 'px-2 py-1 rounded-md text-[11px] font-semibold text-gray-400 hover:text-white';
+                subtitle.textContent = 'Sobreposição comportamental DISC (D, I, S, C) dos candidatos';
+            }
+
+            if (batchResults.length > 0) {
+                renderComparisonRadarChart(batchResults);
+            }
+        }
+
+        function renderComparisonRadarChart(results) {
+            const ctxRadar = document.getElementById('comparisonRadarChart').getContext('2d');
+            if (comparisonRadarInstance) comparisonRadarInstance.destroy();
+
+            const topCandidates = results.slice(0, 4);
+            const palette = [
+                { border: '#C5D94D', bg: 'rgba(197, 217, 77, 0.22)' },
+                { border: '#38BDF8', bg: 'rgba(56, 189, 248, 0.18)' },
+                { border: '#F59E0B', bg: 'rgba(245, 158, 11, 0.16)' },
+                { border: '#F472B6', bg: 'rgba(244, 114, 182, 0.15)' }
+            ];
+
+            const labels = currentRadarMode === 'pillars'
+                ? ['Formação (30%)', 'Técnico (50%)', 'Contexto (20%)', 'Aderência Total']
+                : ['D (Dominância)', 'I (Influência)', 'S (Estabilidade)', 'C (Conformidade)'];
+
+            const datasets = topCandidates.map((cand, idx) => {
+                const color = palette[idx % palette.length];
+                const values = currentRadarMode === 'pillars'
+                    ? [cand.pillars.education, cand.pillars.technical, cand.pillars.context, cand.matchScore]
+                    : [cand.disc.D, cand.disc.I, cand.disc.S, cand.disc.C];
+
+                return {
+                    label: `${idx + 1}º ${cand.candidateName.split(' ')[0]}`,
+                    data: values,
+                    borderColor: color.border,
+                    backgroundColor: color.bg,
+                    borderWidth: 2,
+                    pointBackgroundColor: color.border,
+                    pointRadius: 3
+                };
+            });
+
+            comparisonRadarInstance = new Chart(ctxRadar, {
+                type: 'radar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            ticks: {
+                                display: false,
+                                stepSize: 25
+                            },
+                            grid: {
+                                color: 'rgba(45, 59, 53, 0.7)'
+                            },
+                            angleLines: {
+                                color: 'rgba(45, 59, 53, 0.7)'
+                            },
+                            pointLabels: {
+                                color: '#D1D5DB',
+                                font: { size: 11, weight: '600', family: 'Inter' }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#E5E7EB',
+                                boxWidth: 10,
+                                padding: 12,
+                                font: { size: 11, family: 'Inter' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0F1412',
+                            titleColor: '#C5D94D',
+                            bodyColor: '#FFFFFF',
+                            borderColor: '#2D3B35',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        function selectCandidateForInspection(candidateId, scrollToDetail = true) {
+            const index = batchResults.findIndex(c => c.id === candidateId);
+            if (index === -1) return;
+
+            selectedCandidateId = candidateId;
+            const candidateData = batchResults[index];
+
+            // Atualiza destaque visual no Pódio e na Matriz
+            renderBatchComparison(batchResults, candidateData.jobTitle);
+
+            // Atualiza selo de posição no painel individual
+            document.getElementById('inspected-rank-pill').textContent = `${index + 1}º Lugar (${candidateData.matchScore}%)`;
+
+            renderDashboard(candidateData);
+
+            if (scrollToDetail) {
+                document.getElementById('inspected-rank-pill').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // ==========================================
+        // 7. RENDERIZAÇÃO DO DASHBOARD INDIVIDUAL E GRÁFICOS
+        // ==========================================
+        function renderDashboard(data) {
+            document.getElementById('dashboard-content').classList.remove('hidden');
+
+            // Atualiza cabeçalho de impressão
+            document.getElementById('print-job-subtitle').textContent = `Vaga: ${data.jobTitle} | Candidato em Destaque: ${data.candidateName} (${data.matchScore}%)`;
+            document.getElementById('print-date').textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+
+            // Textos Principais
+            document.getElementById('result-candidate-name').textContent = data.candidateName;
+            document.getElementById('match-score-value').textContent = `${data.matchScore}%`;
+            document.getElementById('match-summary').textContent = data.matchSummary;
+
+            // Breakdown Ponderado
+            document.getElementById('pillar-edu-score').textContent = `${data.pillars.education}%`;
+            document.getElementById('pillar-tech-score').textContent = `${data.pillars.technical}%`;
+            document.getElementById('pillar-ctx-score').textContent = `${data.pillars.context}%`;
+
+            // Formação Destacada
+            document.getElementById('education-highlight-text').textContent = data.educationSummaryText;
+
+            const matchBadge = document.getElementById('match-badge');
+            matchBadge.textContent = data.matchClassification;
+            if (data.matchScore >= 75) {
+                matchBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#2F834A]/30 text-[#C5D94D] border border-[#2F834A]/50 print-badge';
+            } else if (data.matchScore >= 55) {
+                matchBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 print-badge';
+            } else {
+                matchBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/40 print-badge';
+            }
+
+            // DISC Badges e Evidências
+            document.getElementById('disc-dominant-badge').textContent = `Perfil: ${data.disc.dominantLabel}`;
+            document.getElementById('disc-evidence').textContent = data.disc.evidence;
+
+            // Renderiza Pontos Fortes
+            const strengthsList = document.getElementById('strengths-list');
+            strengthsList.innerHTML = data.strengths.map(item => `
+                <li class="flex items-start gap-2.5 bg-[#1E2723] border border-[#2F834A]/40 rounded-xl p-3 text-xs sm:text-sm text-gray-200 print-card print-text-dark">
+                    <i data-lucide="check" class="w-4 h-4 text-[#C5D94D] shrink-0 mt-0.5"></i>
+                    <span>${escapeHtml(item)}</span>
+                </li>
+            `).join('');
+
+            // Renderiza Pontos Fracos / Gaps (ou mensagem positiva se 100% aderente)
+            const weaknessesList = document.getElementById('weaknesses-list');
+            if (data.weaknesses.length === 0) {
+                weaknessesList.innerHTML = `
+                    <li class="flex items-start gap-2.5 bg-[#1E2723] border border-[#2F834A]/50 rounded-xl p-3.5 text-xs sm:text-sm text-[#C5D94D] print-card print-text-dark">
+                        <i data-lucide="award" class="w-5 h-5 text-[#C5D94D] shrink-0 mt-0.5"></i>
+                        <span>Todos os requisitos técnicos e acadêmicos mapeados na descrição da vaga foram atendidos no currículo!</span>
+                    </li>
+                `;
+            } else {
+                weaknessesList.innerHTML = data.weaknesses.map(item => `
+                    <li class="flex items-start gap-2.5 bg-[#1E2723] border border-amber-500/30 rounded-xl p-3 text-xs sm:text-sm text-gray-200 print-card print-text-dark">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+                        <span>${escapeHtml(item)}</span>
+                    </li>
+                `).join('');
+            }
+
+            // Renderiza Perguntas de Entrevista
+            const questionsList = document.getElementById('questions-list');
+            questionsList.innerHTML = data.interviewQuestions.map((q, idx) => `
+                <div class="bg-[#1E2723] border border-[#2D3B35] rounded-xl p-4 print-card">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="w-5 h-5 rounded-md bg-[#2F834A]/30 text-[#C5D94D] text-xs font-bold flex items-center justify-center">
+                            ${idx + 1}
+                        </span>
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-[#C5D94D] print-text-muted">
+                            ${escapeHtml(q.type)}
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-200 print-text-dark leading-relaxed pl-7">
+                        "${escapeHtml(q.question)}"
+                    </p>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+            renderCharts(data);
+        }
+
+        function renderCharts(data) {
+            // 1. Gráfico de Rosca (Match Score)
+            const ctxMatch = document.getElementById('matchChart').getContext('2d');
+            if (matchChartInstance) matchChartInstance.destroy();
+
+            const scoreColor = data.matchScore >= 75 ? '#C5D94D' : (data.matchScore >= 55 ? '#FBBF24' : '#F87171');
+
+            matchChartInstance = new Chart(ctxMatch, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Aderência', 'Gap'],
+                    datasets: [{
+                        data: [data.matchScore, 100 - data.matchScore],
+                        backgroundColor: [scoreColor, '#1E2723'],
+                        borderColor: ['#161D1A', '#2D3B35'],
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '76%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    animation: {
+                        animateScale: true,
+                        duration: 800
+                    }
+                }
+            });
+
+            // 2. Gráfico de Barras Horizontais DISC
+            const ctxDisc = document.getElementById('discChart').getContext('2d');
+            if (discChartInstance) discChartInstance.destroy();
+
+            discChartInstance = new Chart(ctxDisc, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        'D — Dominância',
+                        'I — Influência',
+                        'S — Estabilidade',
+                        'C — Conformidade'
+                    ],
+                    datasets: [{
+                        label: 'Intensidade (%)',
+                        data: [data.disc.D, data.disc.I, data.disc.S, data.disc.C],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.75)',   // D - Vermelho coral suave
+                            'rgba(245, 158, 11, 0.75)',  // I - Âmbar
+                            'rgba(47, 131, 74, 0.85)',   // S - Verde escuro marca
+                            'rgba(197, 217, 77, 0.90)'   // C - Verde limão marca
+                        ],
+                        borderColor: [
+                            '#EF4444',
+                            '#F59E0B',
+                            '#2F834A',
+                            '#C5D94D'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(45, 59, 53, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#9CA3AF',
+                                font: { size: 11, family: 'Inter' },
+                                callback: (val) => val + '%'
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#E5E7EB',
+                                font: { size: 12, weight: '600', family: 'Inter' }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F1412',
+                            titleColor: '#C5D94D',
+                            bodyColor: '#FFFFFF',
+                            borderColor: '#2D3B35',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.parsed.x}% de presença semântica`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // 8. EXPORTAÇÃO PDF E CÓPIA PARA CLIPBOARD
+        // ==========================================
+        function exportToPdf() {
+            if (batchResults.length === 0) return;
+            window.print();
+        }
+
+        function copyBatchRankingToClipboard() {
+            if (batchResults.length === 0) return;
+            const jobTitle = batchResults[0].jobTitle;
+            const verdict = document.getElementById('executive-comparison-verdict').textContent;
+
+            const rankingLines = batchResults.map((c, idx) => {
+                const topGap = c.weaknesses.length > 0 ? c.weaknesses[0] : 'Sem gaps críticos';
+                return `${idx + 1}º Lugar: ${c.candidateName} — Aderência: ${c.matchScore}% (Form: ${c.pillars.education}% | Técn: ${c.pillars.technical}% | Cont: ${c.pillars.context}%) | DISC: ${c.disc.dominantLabel} | Gap: ${topGap}`;
+            }).join('\n');
+
+            const text = `🏆 RANKING COMPARATIVO TALENTSCAN AI
+Vaga: ${jobTitle}
+Candidatos Avaliados: ${batchResults.length}
+
+📊 CLASSIFICAÇÃO GERAL:
+${rankingLines}
+
+⚖️ PARECER COMPARATIVO EXECUTIVO:
+${verdict}`;
+
+            copyTextHelper(text, 'Ranking comparativo copiado para a área de transferência!');
+        }
+
+        function copySummaryToClipboard() {
+            const r = batchResults.find(c => c.id === selectedCandidateId) || batchResults[0];
+            if (!r) return;
+
+            const gapsText = r.weaknesses.length > 0
+                ? r.weaknesses.map(w => `- ${w}`).join('\n')
+                : '- Nenhum gap técnico ou acadêmico crítico identificado.';
+
+            const textSummary = `📊 FICHA INDIVIDUAL TALENTSCAN AI
+Candidato(a): ${r.candidateName}
+Vaga: ${r.jobTitle}
+Aderência Geral: ${r.matchScore}% (${r.matchClassification})
+• Formação (30%): ${r.pillars.education}% | Técnico (50%): ${r.pillars.technical}% | Contexto (20%): ${r.pillars.context}%
+
+🎓 FORMAÇÃO & ÁREA IDENTIFICADA:
+${r.educationSummaryText}
+
+📝 RESUMO EXECUTIVO:
+${r.matchSummary}
+
+🧠 PERFIL DISC (INDICATIVO TEXTUAL):
+• Predominância: ${r.disc.dominantLabel}
+• D: ${r.disc.D}% | I: ${r.disc.I}% | S: ${r.disc.S}% | C: ${r.disc.C}%
+• Indícios: ${r.disc.evidence}
+
+✅ PONTOS FORTES:
+${r.strengths.map(s => `- ${s}`).join('\n')}
+
+⚠️ PONTOS DE ATENÇÃO / GAPS:
+${gapsText}
+
+💬 PERGUNTAS SUGERIDAS PARA ENTREVISTA:
+${r.interviewQuestions.map((q, i) => `${i + 1}. [${q.type}] ${q.question}`).join('\n')}`;
+
+            copyTextHelper(textSummary, `Ficha individual de ${r.candidateName} copiada!`);
+        }
+
+        function copyTextHelper(text, successMsg) {
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = text;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMsg, 'success');
+            } catch (err) {
+                showToast('Não foi possível copiar automaticamente.', 'error');
+            }
+            document.body.removeChild(tempTextarea);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
